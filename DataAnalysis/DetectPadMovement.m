@@ -1,0 +1,55 @@
+function movementtimes = DetectPadMovement (FileBase, Channels)
+
+
+[State,AuxData,FreqRange,Window,Action, Overwrite] = ...
+    DefaultArgs([],{[],[],[1 100],1,'display',0});
+
+Par = LoadPar([FileBase '.xml']); %load parameters in the xml file
+if isfield(Par,'lfpSampleRate')
+    eSampleRate = Par.lfpSampleRate;
+else
+    eSampleRate = 1250;
+end
+
+% now compute the spectrogram
+if FileExists([FileBase '.eeg'])
+    try 
+        Eeg = LoadBinary([FileBase '.eeg'], Channels,Par.nChannels,4)';
+    catch
+        Eeg = LoadBinary([FileBase '.eeg'], Channels,Par.nChannels,2)';
+    end
+elseif FileExists([FileBase '.eeg.0'])
+    Eeg = bload([FileBase '.eeg.0'],[1 inf]); 
+else
+    error('no eeg file or eeg.0 file! \n');
+end
+
+fprintf('computing spectrograms, may take time ... \n');
+%nFFT = 2^round(log2(2^11)); %compute nFFT according to different sampling rates
+SpecWindow = 2^round(log2(Window*eSampleRate));% choose window length as power of two
+nFFT = SpecWindow*4;
+weeg = WhitenSignal(Eeg,eSampleRate*2000,1);
+[y,f,t]=mtcsglong(weeg,nFFT,eSampleRate,SpecWindow,[],2,'linear',[],FreqRange);
+t = (t(2)-t(1))/2 +t;
+
+% y is a version of the spectrogram
+% f is the frequencies sampled at
+% t is time
+
+spectrogram = log(sq(y'));
+FreqOfInterest = [16 24];
+FreqsToUse (1) = find(f>16,1,'first');
+FreqsToUse (2) = find(f<24,1,'last');
+FreqsToUse = FreqsToUse(1):FreqsToUse(2);
+powerprofile = mean(spectrogram(FreqsToUse,:),1);
+
+%%% These are for possibly plotting data to look at it for calibrating
+% EegTimestep = t(end)/(length(Eeg)-1);
+% EegTime = 0:EegTimestep:t(end);
+% nEeg = bwnormalize(Eeg);
+% npowerprofile = bwnormalize(powerprofile);
+% figure;plot(EegTime,nEeg); hold on; plot(t,npowerprofile,'r')
+
+threshold = 5.5; %arbitrary, based on by-eye measures
+aboveperiods=continuousabove(powerprofile,zeros(size(powerprofile)),threshold,1,inf); %find timepoints above threshold
+movementtimes = t(aboveperiods);%convert to seconds, rename, this is final output
