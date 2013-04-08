@@ -5,7 +5,7 @@ function copyXmlFileToMatchAllDats
 [sourceFileName,sourcePathName,sourceFilterIndex] = uigetfile('.xml','Indicate xml to copy');%get from user the xml to be copied as a template
 sourcepath = fullfile(sourcePathName,sourceFileName); 
 
-destdirpath = uigetdir ('/brendon2', 'Indicate superdirectory containing all dats to make .xmls for'); 
+destdirpath = uigetdir (cd, 'Indicate superdirectory containing all dats to make .xmls for'); 
 overwrite = questdlg('overwrite existing .xml files in this directory','Overwrite?','No');
 
 destlist = listallsubdirfiles(destdirpath);%get all files in all subdirectories of the specified destination area
