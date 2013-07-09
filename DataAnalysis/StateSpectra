@@ -1,0 +1,37 @@
+function [spectra,f,s,meanresampledspectra] = StateSpectra (basename,statenumber)
+
+% basename = '2012-02-28_merge';
+load([basename,'-states.mat']);%'states' will be a variable
+
+
+[StateInds,StateBounds] = ExtractStateBounds(states,statenumber,2);
+
+% %%%%%if aquired by with amplirec, do the following
+% for a = 1:size(FreezeBounds,1)
+%     data{a} = LoadBinary([basename,'.eeg'],14,[],[],[],[],1250*FreezeBounds(a,:),[]);
+% end
+% %%%%%
+
+
+%%%%%if aquired by neuralynx, do the following
+StateInds = StateInds*1250/1252;
+StateBounds = StateBounds*1250/1252;
+
+for a = 1:size(StateBounds,1)
+    data{a} = LoadBinary([basename,'.eeg'],14,[],[],[],[],round(1252*StateBounds(a,:)),[]);
+end
+%%%%%
+
+sumresampledspectra = zeros(621,1);
+for a = 1:length(data)
+%     [spectra{a},f,s] = MTSpectrum(data{a}','frequency',1252/5,'tapers',[20 39],'show','on');
+    resampleddata{a} = resample(data{a},1,5);
+    [spectra{a},f{a},s{a}] = MTSpectrum(resampleddata{a}','frequency',1252/5,'tapers',[50 99],'show','on');
+    spectraobj{a} = timeseries(spectra{a},f{a},'name','1');%make it into a timeseries object to run a particular kind of interpolation fcn
+    resampledspectra{a} = resample(spectraobj{a},[1:.2:125]);
+    sumresampledspectra = sumresampledspectra+resampledspectra{a}.Data;
+end
+
+meanresampledspectra = sumresampledspectra/a;
+figure;plot(1:.2:125,log(meanresampledspectra))
+
